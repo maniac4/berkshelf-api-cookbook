@@ -1,0 +1,87 @@
+#!/bin/sh
+#
+# <%= @cookbook_name %>        init file for starting up the <%= @cookbook_name %> daemon
+#
+# chkconfig:   - 20 80
+# description: Starts and stops the <%= @cookbook_name %> daemon.
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+NAME="<%= @cookbook_name %>"
+export PATH=/opt/chef/embedded/bin:$PATH
+BINARY="<%= node[:berkshelf_api][:release_symlink] %>/bin/berks-api"
+PIDFILE="/var/run/$NAME/$NAME.pid"
+LOGFILE="/var/log/$NAME/$NAME.log"
+LOCKFILE=/var/lock/subsys/$NAME
+
+if [ ! -d "/var/run/$NAME" ];
+then
+  mkdir -p /var/run/$NAME && chown $NAME:$NAME /var/run/$NAME
+fi
+
+if [ ! -d "/var/log/$NAME" ];
+then
+  mkdir -p /var/log/$NAME && chown $NAME:$NAME /var/log/$NAME
+fi
+
+if [ ! -f $LOGFILE ];
+then 
+ touch $LOGFILE ; chown $NAME:$NAME $LOGFILE
+fi
+
+start() {
+    [ -f <%= node[:berkshelf_api][:config_path] %> ] || exit 6
+    [ -x $BINARY ] || exit 5
+    echo -n $"Starting $NAME: "
+    cd <%= node[:berkshelf_api][:release_symlink] %>
+    daemon --user=$NAME "bundle exec $BINARY -h <%= node[:berkshelf_api][:host] %> -p <%= node[:berkshelf_api][:port] %> -c <%= node[:berkshelf_api][:config] %> >> $LOGFILE &"
+    retval=$?
+    echo
+    [ $retval -eq 0 ] && ( touch $LOCKFILE ; pgrep -f $NAME > $PIDFILE )
+    return $retval
+}
+
+stop() {
+    echo -n $"Stopping $NAME: "
+    killproc -p $PIDFILE
+    retval=$?
+    echo
+    [ $retval -eq 0 ] && rm -f $LOCKFILE
+    return $retval
+}
+
+restart() {
+    stop
+    start
+}
+
+rh_status() {
+    status -p $PIDFILE $NAME
+}
+
+rh_status_q() {
+    rh_status >/dev/null 2>&1
+}
+
+
+case "$1" in
+    start)
+        rh_status_q && exit 0
+        $1
+        ;;
+    stop)
+        rh_status_q || exit 0
+        $1
+        ;;
+    restart)
+        $1
+        ;;
+    status)
+        rh_status
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|status|restart}"
+        exit 2
+esac
+exit $?

@@ -1,0 +1,16 @@
+{
+  "endpoints": [
+    <% node[:berkshelf_api][:endpoints][:chef_server].each do |chef_server| %>
+    {
+      "type": "chef_server",
+      "options": {
+        "url": "<%= chef_server.fetch(:url) %>",
+        "client_name": "<%= chef_server.fetch(:client_name) %>",
+        "client_key": "<%= chef_server.fetch(:client_key) %>",
+        "ssl_verify": "<%= chef_server.fetch(:ssl_verify) %>"
+      }
+    }<% if node[:berkshelf_api][:endpoints][:chef_server].last != chef_server %>,<% end %>
+    <% end %>
+  ]
+}
+
